@@ -212,7 +212,26 @@ values:
 			expectedRepoCount: 2,
 		},
 		{
-			name: "duplicate repositories",
+			name: "duplicate repositories with same value",
+			configContent: `property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"`,
+			mockRepositories: map[string]*github.Repository{
+				"org1/repo1": {
+					Name:  github.Ptr("repo1"),
+					Owner: &github.User{Login: github.Ptr("org1")},
+				},
+			},
+			expectError:       false,
+			expectedRepoCount: 1, // Should not duplicate
+		},
+		{
+			name: "duplicate repositories with conflicting values",
 			configContent: `property_name: "team"
 values:
   - value: "backend"
@@ -227,8 +246,8 @@ values:
 					Owner: &github.User{Login: github.Ptr("org1")},
 				},
 			},
-			expectError:       false,
-			expectedRepoCount: 1, // Should not duplicate
+			expectError:   true,
+			errorContains: "is configured with conflicting values",
 		},
 	}
 
@@ -244,7 +263,14 @@ values:
 
 			if tt.configContent != "" {
 				reader := strings.NewReader(tt.configContent)
-				if err := config.LoadConfig(reader); err != nil {
+				err := config.LoadConfig(reader)
+				if tt.expectError && err != nil {
+					// エラーが期待されており、LoadConfigでエラーが発生した場合はそこで検証終了
+					if !strings.Contains(err.Error(), tt.errorContains) {
+						t.Errorf("expected error to contain %q, got %q", tt.errorContains, err.Error())
+					}
+					return
+				} else if err != nil {
 					t.Fatalf("Failed to load config: %v", err)
 				}
 			}
@@ -764,4 +790,120 @@ type errorReader struct{}
 
 func (e *errorReader) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("read error")
+}
+
+func TestLoadConfigDuplicateValidation(t *testing.T) {
+	tests := []struct {
+		name          string
+		yamlContents  []string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "same repository with same value - should pass",
+			yamlContents: []string{
+				`property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"`,
+			},
+			expectError: false,
+		},
+		{
+			name: "same repository with different values in single file - should fail",
+			yamlContents: []string{
+				`property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"
+  - value: "frontend"
+    repositories:
+      - name: "org1/repo1"`,
+			},
+			expectError:   true,
+			errorContains: "is configured with conflicting values",
+		},
+		{
+			name: "same repository with different values across multiple files - should fail",
+			yamlContents: []string{
+				`property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"`,
+				`property_name: "team"
+values:
+  - value: "frontend"
+    repositories:
+      - name: "org1/repo1"`,
+			},
+			expectError:   true,
+			errorContains: "is already configured with value",
+		},
+		{
+			name: "same repository with same value across multiple files - should pass",
+			yamlContents: []string{
+				`property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"`,
+				`property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"`,
+			},
+			expectError: false,
+		},
+		{
+			name: "different properties, same repository - should pass",
+			yamlContents: []string{
+				`property_name: "team"
+values:
+  - value: "backend"
+    repositories:
+      - name: "org1/repo1"`,
+				`property_name: "environment"
+values:
+  - value: "production"
+    repositories:
+      - name: "org1/repo1"`,
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := NewConfig(NewMockGitHubClient())
+
+			var err error
+			for i, yamlContent := range tt.yamlContents {
+				reader := strings.NewReader(yamlContent)
+				err = config.LoadConfig(reader)
+				if err != nil {
+					break
+				}
+				t.Logf("Successfully loaded config file %d", i+1)
+			}
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("expected error to contain %q, got %q", tt.errorContains, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
 }

@@ -47,6 +47,46 @@ func NewConfig(githubClient GitHubClient) *Config {
 	}
 }
 
+func (c *Config) validateNoDuplicateRepositoryValues(configFile *ConfigFile) error {
+	// Check if the same repository is configured with different values in the current configFile
+	repositoryValueMap := make(map[string]string)
+
+	for _, value := range configFile.Values {
+		for _, repositoryConfig := range value.Repositories {
+			repositoryName := repositoryConfig.Name
+
+			if existingValue, exists := repositoryValueMap[repositoryName]; exists {
+				if existingValue != value.Value {
+					return fmt.Errorf("repository %s is configured with conflicting values: '%s' and '%s' for property '%s'",
+						repositoryName, existingValue, value.Value, configFile.PropertyName)
+				}
+			} else {
+				repositoryValueMap[repositoryName] = value.Value
+			}
+		}
+	}
+
+	// Check for duplicates between existing configurationFiles and the new configFile
+	for _, existingConfigFile := range c.configurationFiles {
+		if existingConfigFile.PropertyName == configFile.PropertyName {
+			for _, existingValue := range existingConfigFile.Values {
+				for _, existingRepositoryConfig := range existingValue.Repositories {
+					repositoryName := existingRepositoryConfig.Name
+
+					if newValue, exists := repositoryValueMap[repositoryName]; exists {
+						if existingValue.Value != newValue {
+							return fmt.Errorf("repository %s is already configured with value '%s' but new config tries to set it to '%s' for property '%s'",
+								repositoryName, existingValue.Value, newValue, configFile.PropertyName)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (c *Config) LoadConfig(r io.Reader) error {
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -56,6 +96,11 @@ func (c *Config) LoadConfig(r io.Reader) error {
 	var configFile ConfigFile
 	if err := yaml.Unmarshal(data, &configFile); err != nil {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Check if the same repository is configured with different values
+	if err := c.validateNoDuplicateRepositoryValues(&configFile); err != nil {
+		return err
 	}
 
 	c.configurationFiles = append(c.configurationFiles, &configFile)
