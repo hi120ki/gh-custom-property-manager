@@ -103,20 +103,6 @@ release:
     name: gh-custom-property-manager
   name_template: "{{.ProjectName}} v{{.Version}}"
 
-brews:
-  - name: gh-custom-property-manager
-    repository:
-      owner: hi120ki
-      name: homebrew-tap
-      branch: main
-    homepage: "https://github.com/hi120ki/gh-custom-property-manager"
-    description: "A CLI tool for efficiently managing GitHub repository custom properties"
-    license: "MIT"
-    test: |
-      system "#{bin}/gh-custom-property-manager --version"
-    install: |
-      bin.install "gh-custom-property-manager"
-
 nfpms:
   - file_name_template: '{{ .ConventionalFileName }}'
     homepage: https://github.com/hi120ki/gh-custom-property-manager
