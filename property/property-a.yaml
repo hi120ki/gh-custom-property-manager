@@ -1,0 +1,9 @@
+property_name: property-a
+values:
+  - value: "true"
+    repositories:
+      - name: hi120ki/example
+  - value: "false"
+    repositories:
+      - name: hi120ki/example1
+      - name: hi120ki/example2
