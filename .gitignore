@@ -224,4 +224,7 @@ typings/
 # Serverless directories
 .serverless
 
+# GoReleaser
+dist/
+
 gh-custom-property-manager
