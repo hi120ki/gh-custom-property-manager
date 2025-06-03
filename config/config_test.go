@@ -647,43 +647,39 @@ values:
 	}
 }
 
-func TestApplyChanges(t *testing.T) {
+func TestApplyChange(t *testing.T) {
 	tests := []struct {
 		name          string
-		diffs         []*PropertyDiff
+		diff          *PropertyDiff
 		updateError   error
 		expectError   bool
 		errorContains string
 	}{
 		{
-			name:          "no diffs",
-			diffs:         []*PropertyDiff{},
+			name:          "nil diff",
+			diff:          nil,
 			expectError:   true,
-			errorContains: "no diffs to apply",
+			errorContains: "property diff is nil",
 		},
 		{
 			name: "successful update",
-			diffs: []*PropertyDiff{
-				{
-					Organization: "org1",
-					Repository:   "repo1",
-					PropertyName: "team",
-					OldValue:     "old",
-					NewValue:     "new",
-				},
+			diff: &PropertyDiff{
+				Organization: "org1",
+				Repository:   "repo1",
+				PropertyName: "team",
+				OldValue:     "old",
+				NewValue:     "new",
 			},
 			expectError: false,
 		},
 		{
 			name: "update failure",
-			diffs: []*PropertyDiff{
-				{
-					Organization: "org1",
-					Repository:   "repo1",
-					PropertyName: "team",
-					OldValue:     "old",
-					NewValue:     "new",
-				},
+			diff: &PropertyDiff{
+				Organization: "org1",
+				Repository:   "repo1",
+				PropertyName: "team",
+				OldValue:     "old",
+				NewValue:     "new",
 			},
 			updateError:   fmt.Errorf("API error"),
 			expectError:   true,
@@ -698,7 +694,7 @@ func TestApplyChanges(t *testing.T) {
 
 			config := NewConfig(mockClient)
 
-			err := config.ApplyChanges(context.Background(), tt.diffs)
+			err := config.ApplyChange(context.Background(), tt.diff)
 
 			if tt.expectError {
 				if err == nil {
@@ -712,6 +708,37 @@ func TestApplyChanges(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestApplyChangeMultiple tests applying multiple changes using the new ApplyChange function
+func TestApplyChangeMultiple(t *testing.T) {
+	mockClient := NewMockGitHubClient()
+	config := NewConfig(mockClient)
+
+	diffs := []*PropertyDiff{
+		{
+			Organization: "org1",
+			Repository:   "repo1",
+			PropertyName: "team",
+			OldValue:     "old1",
+			NewValue:     "new1",
+		},
+		{
+			Organization: "org2",
+			Repository:   "repo2",
+			PropertyName: "environment",
+			OldValue:     "old2",
+			NewValue:     "new2",
+		},
+	}
+
+	// Apply each diff individually
+	for _, diff := range diffs {
+		err := config.ApplyChange(context.Background(), diff)
+		if err != nil {
+			t.Errorf("unexpected error applying diff: %v", err)
+		}
 	}
 }
 

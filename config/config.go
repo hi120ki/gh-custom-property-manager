@@ -158,18 +158,16 @@ func (c *Config) GenerateDiffs(ctx context.Context) ([]*PropertyDiff, error) {
 	return propertyDiffs, nil
 }
 
-func (c *Config) ApplyChanges(ctx context.Context, propertyDiffs []*PropertyDiff) error {
-	if len(propertyDiffs) == 0 {
-		return fmt.Errorf("no diffs to apply")
+func (c *Config) ApplyChange(ctx context.Context, propertyDiff *PropertyDiff) error {
+	if propertyDiff == nil {
+		return fmt.Errorf("property diff is nil")
 	}
 
-	for _, diff := range propertyDiffs {
-		propertyUpdates := map[string]string{
-			diff.PropertyName: diff.NewValue,
-		}
-		if err := c.githubClient.UpdateCustomProperties(ctx, diff.Organization, diff.Repository, propertyUpdates); err != nil {
-			return fmt.Errorf("failed to update property %s for repository %s/%s: %w", diff.PropertyName, diff.Organization, diff.Repository, err)
-		}
+	propertyUpdates := map[string]string{
+		propertyDiff.PropertyName: propertyDiff.NewValue,
+	}
+	if err := c.githubClient.UpdateCustomProperties(ctx, propertyDiff.Organization, propertyDiff.Repository, propertyUpdates); err != nil {
+		return fmt.Errorf("failed to update property %s for repository %s/%s: %w", propertyDiff.PropertyName, propertyDiff.Organization, propertyDiff.Repository, err)
 	}
 
 	return nil

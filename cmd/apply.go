@@ -73,15 +73,12 @@ and applies the necessary changes.`,
 
 		cmd.Println("Applying changes:")
 
-		// Apply changes using the ApplyChanges function
-		if err := configManager.ApplyChanges(ctx, propertyDiffs); err != nil {
-			cmd.Printf("Error applying changes: %v\n", err)
-			return
-		}
-
-		// Show applied changes
 		for _, diff := range propertyDiffs {
 			cmd.Printf("  %s/%s: Set %s = %s\n", diff.Organization, diff.Repository, diff.PropertyName, diff.NewValue)
+			if err := configManager.ApplyChange(ctx, diff); err != nil {
+				cmd.Printf("Error applying change: %v\n", err)
+				return
+			}
 		}
 
 		cmd.Println("All changes applied successfully.")
