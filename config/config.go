@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v74/github"
 )
 
 // GitHubClient defines the interface for GitHub operations
