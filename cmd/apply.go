@@ -44,7 +44,11 @@ and applies the necessary changes.`,
 				cmd.Printf("Error opening config file %s: %v\n", configFilePath, err)
 				return
 			}
-			defer configFile.Close()
+			defer func() {
+				if err := configFile.Close(); err != nil {
+					cmd.Printf("Error closing config file %s: %v\n", configFilePath, err)
+				}
+			}()
 
 			if err := configManager.LoadConfig(configFile); err != nil {
 				cmd.Printf("Error loading config from %s: %v\n", configFilePath, err)
