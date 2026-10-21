@@ -99,5 +99,5 @@ values:
 ### Release Process
 - Uses GoReleaser for automated releases on git tags
 - Builds for Linux, Windows, macOS (amd64, arm64)
-- CI pipeline runs tests on Go 1.23 and 1.24
+- CI pipeline runs tests on Go 1.25 and the current stable release
 - Includes linting via golangci-lint
